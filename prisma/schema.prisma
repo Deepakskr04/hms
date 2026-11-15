@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Room {
+  id               String       @id @default(cuid())
+  roomNumber       String       @unique
+  wing             String
+  mode             String       @default("STANDARD") // "STANDARD" | "STANDBY" | "PERSONAL" | "STORE_ROOM"
+  status           String       @default("AVAILABLE") // "AVAILABLE" | "OCCUPIED" | "NEEDS_CLEANING" | "MAINTENANCE"
+  isAttached       Boolean      @default(true)
+  bedType          String       @default("NORMAL")
+  cooling          String       @default("FAN_COOLER")
+  hasTv            Boolean      @default(false)
+  hasKitchen       Boolean      @default(false)
+  hasBalcony       Boolean      @default(false)
+  defaultHintPrice Int?
+  notes            String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  bookings         Booking[]
+  issues           HotelIssue[]
+}
+
+model Guest {
+  id          String    @id @default(cuid())
+  fullName    String
+  phone       String    @unique
+  idProofType String
+  idProofNo   String
+  idFrontUrl  String?
+  idBackUrl   String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  bookings    Booking[]
+}
+
+model Booking {
+  id               String           @id @default(cuid())
+  roomId           String
+  room             Room             @relation(fields: [roomId], references: [id])
+  guestId          String
+  guest            Guest            @relation(fields: [guestId], references: [id])
+  source           String           // "WALK_IN" | "PHONE_CALL"
+  stayType         String           @default("DAILY") // "DAILY" | "MONTHLY"
+  checkIn          DateTime         @default(now())
+  expectedCheckOut DateTime?
+  actualCheckOut   DateTime?
+  guestsCount      Int              @default(1)
+  agreedRate       Int              // Daily rate or Monthly rate in ₹
+  finalTotal       Int?             // Populated / locked upon checkout settlement
+  totalPaid        Int              @default(0) // Sum of all BookingPayment records
+  status           String           @default("ACTIVE") // "UPCOMING" | "ACTIVE" | "COMPLETED"
+  createdBy        String           // "ADMIN" | "OWNER" | "OPENCLAW"
+  notes            String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  payments         BookingPayment[]
+}
+
+model BookingPayment {
+  id          String   @id @default(cuid())
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  amount      Int
+  paymentMode String   // "CASH" | "UPI"
+  paymentType String   // "ADVANCE" | "MID_STAY" | "CHECKOUT_SETTLEMENT"
+  paidAt      DateTime @default(now())
+  notes       String?
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  title       String
+  category    String   // "MAINTENANCE" | "UTILITIES" | "SUPPLIES" | "STAFF" | "OTHER"
+  amount      Int
+  paymentMode String   // "CASH" | "UPI"
+  loggedBy    String
+  expenseDate DateTime @default(now())
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model HotelIssue {
+  id         String    @id @default(cuid())
+  roomId     String?
+  room       Room?     @relation(fields: [roomId], references: [id])
+  title      String
+  priority   String    @default("NORMAL") // "NORMAL" | "URGENT"
+  status     String    @default("OPEN")   // "OPEN" | "RESOLVED"
+  blockRoom  Boolean   @default(false)
+  loggedBy   String
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+  updatedAt  DateTime  @updatedAt
+}

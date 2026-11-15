@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lodge_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-lodge_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lodge_secure_pass_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-lodge_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lodge_admin} -d ${POSTGRES_DB:-lodge_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lodge_app
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-lodge_admin}:${POSTGRES_PASSWORD:-lodge_secure_pass_2026}@postgres:5432/${POSTGRES_DB:-lodge_db}?schema=public
+      OPENCLAW_API_KEY: ${OPENCLAW_API_KEY}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+      LOCAL_TEST_MODE: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - app_uploads:/app/public/uploads
+
+volumes:
+  postgres_data:
+  app_uploads:
