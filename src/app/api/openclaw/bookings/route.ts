@@ -6,6 +6,51 @@ import { toTwelvePM } from "@/lib/date-utils";
 import { normalizePhone } from "@/lib/phone-utils";
 import { safeRevalidatePath } from "@/lib/safe-revalidate";
 
+export const dynamic = "force-dynamic";
+
+export async function GET(req: NextRequest) {
+  const authError = verifyOpenClawKey(req);
+  if (authError) return authError;
+
+  try {
+    const url = new URL(req.url);
+    const status = url.searchParams.get("status") || "ACTIVE";
+
+    const bookings = await prisma.booking.findMany({
+      where: status === "ALL" ? undefined : { status },
+      include: {
+        room: { select: { roomNumber: true, wing: true } },
+        guest: { select: { fullName: true, phone: true } },
+        payments: true,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+
+    return NextResponse.json({
+      success: true,
+      count: bookings.length,
+      bookings: bookings.map((b) => ({
+        id: b.id,
+        roomNumber: b.room.roomNumber,
+        guestName: b.guest.fullName,
+        phone: b.guest.phone,
+        stayType: b.stayType,
+        status: b.status,
+        checkIn: b.checkIn,
+        expectedCheckOut: b.expectedCheckOut,
+        agreedRate: b.agreedRate,
+        totalPaid: b.totalPaid,
+      })),
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : "Failed to fetch bookings" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(req: NextRequest) {
   const authError = verifyOpenClawKey(req);
   if (authError) return authError;

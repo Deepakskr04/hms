@@ -3,6 +3,26 @@ import { prisma } from "@/lib/prisma";
 import { verifyOpenClawKey } from "@/lib/openclaw-auth";
 import { safeRevalidatePath } from "@/lib/safe-revalidate";
 
+export const dynamic = "force-dynamic";
+
+export async function GET(req: NextRequest) {
+  const authError = verifyOpenClawKey(req);
+  if (authError) return authError;
+
+  try {
+    const expenses = await prisma.expense.findMany({
+      orderBy: { expenseDate: "desc" },
+      take: 50,
+    });
+    return NextResponse.json({ success: true, count: expenses.length, expenses });
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : "Failed to fetch expenses" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(req: NextRequest) {
   const authError = verifyOpenClawKey(req);
   if (authError) return authError;

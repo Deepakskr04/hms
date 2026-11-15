@@ -5,6 +5,8 @@ import { RoomStatus } from "@/types/enums";
 import { calculateStayUnitsAndBill } from "@/lib/booking-utils";
 import { safeRevalidatePath } from "@/lib/safe-revalidate";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   const authError = verifyOpenClawKey(req);
   if (authError) return authError;

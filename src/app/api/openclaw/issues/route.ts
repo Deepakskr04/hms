@@ -4,6 +4,31 @@ import { verifyOpenClawKey } from "@/lib/openclaw-auth";
 import { RoomStatus } from "@/types/enums";
 import { safeRevalidatePath } from "@/lib/safe-revalidate";
 
+export const dynamic = "force-dynamic";
+
+export async function GET(req: NextRequest) {
+  const authError = verifyOpenClawKey(req);
+  if (authError) return authError;
+
+  try {
+    const url = new URL(req.url);
+    const status = url.searchParams.get("status") || "OPEN";
+
+    const issues = await prisma.hotelIssue.findMany({
+      where: status === "ALL" ? undefined : { status },
+      include: { room: { select: { roomNumber: true } } },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json({ success: true, count: issues.length, issues });
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : "Failed to fetch issues" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(req: NextRequest) {
   const authError = verifyOpenClawKey(req);
   if (authError) return authError;
